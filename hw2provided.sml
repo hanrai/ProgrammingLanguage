@@ -8,20 +8,16 @@ fun same_string(s1 : string, s2 : string) =
 
 (* put your solutions for problem 1 here *)
 (* Problem 1: a *)
-fun all_except_option (key, data) =
-    let
-        fun tail ([], lst) = NONE
-          | tail (x::xs, lst) =
-            case same_string(key, x)
-             of true => SOME(lst @ xs)
-              | false => tail(xs, lst @ [x])
-    in
-        tail(data, [])
-    end;
+fun all_except_option (_, []) = NONE
+  | all_except_option (key, x::xs) =
+    if key = x then SOME(xs) else
+    case all_except_option(key, xs)
+     of NONE => NONE
+      | SOME v => SOME(x::v);
 
 (* Problem 1:b *)
 fun get_substitutions1 ([], _) = []
-  | get_substitutions1 (x::xs, key) = 
+  | get_substitutions1 (x::xs, key) =
     case all_except_option(key, x)
      of NONE => get_substitutions1(xs, key)
       | SOME v => v @ get_substitutions1(xs, key)
@@ -30,7 +26,7 @@ fun get_substitutions1 ([], _) = []
 fun get_substitutions2 (data, key) =
     let
         fun tail ([], lst) = lst
-          | tail (x::xs, lst) = 
+          | tail (x::xs, lst) =
             case all_except_option(key, x)
              of NONE => tail(xs, lst)
               | SOME v => tail(xs, lst @ v)
@@ -52,11 +48,11 @@ fun similar_names (data, name) =
 (* you may assume that Num is always used with values 2, 3, ..., 10
    though it will not really come up *)
 datatype suit = Clubs | Diamonds | Hearts | Spades
-datatype rank = Jack | Queen | King | Ace | Num of int 
+datatype rank = Jack | Queen | King | Ace | Num of int
 type card = suit * rank
 
 datatype color = Red | Black
-datatype move = Discard of card | Draw 
+datatype move = Discard of card | Draw
 
 exception IllegalMove
 
@@ -77,15 +73,10 @@ fun card_value (_, data) =
 
 (* Problem 2:c *)
 fun remove_card (cs, c, e) =
-    let
-        fun tail ([], _) = raise e
-          | tail (x::xs, lst) =
-            case x = c
-             of true => lst @ xs
-              | false => tail(xs, x::lst)
-    in
-        tail(cs, [])
-    end;
+    case all_except_option(c, cs)
+     of NONE => raise e
+     | SOME a => a
+
 
 (* Problem 2:d *)
 fun  all_same_color ([]) = true
@@ -137,16 +128,13 @@ fun score_challenge (cs, goal) =
     in
         try_score(p_score(cs, goal, count), count - 1)
     end;
-        
+
 (* Problem 2:g *)
-fun run ([], hl, _, goal, _, score_fn) = score_fn(hl, goal)
-  | run (_, hl, [], goal, _, score_fn) = score_fn(hl, goal)
-  | run (cl, hl, ml, goal, sum_fn, score_fn) =
-    case (cl, ml, sum_fn(hl) > goal)
-     of (_, _, true) => score_fn(hl, goal)
-      | (c::cs, Draw::ms, _) => run(cs, c::hl, ms, goal, sum_fn, score_fn)
-      | (_, Discard dc::ms, _) =>
-        run(cl, remove_card(hl, dc, IllegalMove), ms, goal, sum_fn, score_fn)
+fun run (cards, holds, moves, goal, sum_fn, score_fn) =
+    case (cards, moves, sum_fn(holds) > goal)
+     of (card::cards', Draw::moves', false) => run(cards', card::holds, moves', goal, sum_fn, score_fn)
+      | (_, Discard card::moves', false) => run(cards, remove_card(holds, card, IllegalMove), moves', goal, sum_fn, score_fn)
+      | _ => score_fn(holds, goal)
 
 fun officiate (card_list, move_list, goal) =
     run(card_list, [], move_list, goal, sum_cards, score);
@@ -156,4 +144,3 @@ fun min_sum (cs) = sum_cards cs - count_ace (cs, 0) * 10;
 
 fun officiate_challenge (card_list, move_list, goal) =
     run(card_list, [], move_list, goal, min_sum, score_challenge);
-
